@@ -1,7 +1,0 @@
-npm notice run tukios@0.1.0 npx
-npm notice run 'drizzle-kit' migrate
-No config path provided, using default 'drizzle.config.ts'
-Reading config file '/home/agustin/Documentos/Proyectos/TuKios/drizzle.config.ts'
-◇ injected env (5) from .env.local // tip: ◈ secrets for agents [www.dotenvx.com]
-Using 'postgres' driver for database querying
-[⣷] applying migrations...[2K[1G[⣯] applying migrations...[2K[1G[⣯] applying migrations...

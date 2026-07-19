@@ -21,9 +21,9 @@ SaaS multi-tenant de gestión para kioscos/almacenes/minimarkets argentinos. Cad
 
 ### Estado de implementación
 
-Las siguientes reglas están **documentadas** como decisión de arquitectura pero **aún no implementadas** (son lógica de seguridad/negocio, fuera del alcance del scaffolding inicial):
-
-- **RLS (Row Level Security):** no hay ninguna policy creada todavía en ninguna tabla.
+- **RLS (Row Level Security):** implementado y verificado — función `mi_tienda_id()` (SECURITY DEFINER) + policies de SELECT/INSERT/UPDATE (sin DELETE) por `tienda_id` en las 6 tablas, más los GRANT correspondientes al rol `authenticated`. Ver `drizzle/0001_rls_policies_aislamiento_tienda.sql` y `drizzle/0002_grants_authenticated.sql`.
+  - ⚠️ **PRIORITARIO antes de tener el primer cliente real:** la policy de UPDATE en `usuarios` hoy solo aísla por `tienda_id`, no distingue dueño/empleado. Cualquier usuario autenticado puede editar la fila de `usuarios` de cualquier otro usuario de su misma tienda, incluyendo su propio campo `rol` — un empleado podría auto-asignarse `rol = 'dueño'` llamando la API directo. Falta una policy de UPDATE más restrictiva en `usuarios` (por ejemplo, que solo el dueño pueda modificar el campo `rol`, o que nadie pueda modificar su propio rol).
+  - Pendiente, no bloqueante: el alta del primer usuario/tienda tiene un problema de bootstrap — la policy de INSERT en `usuarios` requiere que el usuario ya tenga un `tienda_id`, que todavía no existe en el alta inicial. Se resuelve haciendo ese INSERT puntual vía `service_role` (bypasea RLS) en el flujo de onboarding, cuando se construya.
 - **Vista `productos_publicos`:** no existe todavía. El catálogo público sigue sin tener una forma de leer productos sin exponer `costo` y `porcentaje_ganancia`.
 
 ## Modelo de datos (resumen — ver documento completo para detalle de tipos/índices)

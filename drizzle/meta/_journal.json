@@ -22,6 +22,20 @@
       "when": 1784421242261,
       "tag": "0002_grants_authenticated",
       "breakpoints": true
+    },
+    {
+      "idx": 3,
+      "version": "7",
+      "when": 1784591037554,
+      "tag": "0003_vista_productos_publicos",
+      "breakpoints": true
+    },
+    {
+      "idx": 4,
+      "version": "7",
+      "when": 1784591200202,
+      "tag": "0004_revoke_authenticated_productos_publicos",
+      "breakpoints": true
     }
   ]
 }

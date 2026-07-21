@@ -1,7 +1,18 @@
 import { NextRequest, NextResponse } from "next/server";
+import { verificarBasicAuth } from "@/lib/admin-auth";
 
 const ROOT_DOMAIN = "tukios.com";
 const SUBDOMINIO_HEADER = "x-tukios-subdominio";
+
+function respuestaNoAutorizada() {
+  return new NextResponse("Autenticación requerida.", {
+    status: 401,
+    headers: {
+      // Header que hace que el navegador muestre el popup nativo de Basic Auth.
+      "WWW-Authenticate": 'Basic realm="TuKios Admin"',
+    },
+  });
+}
 
 export function proxy(request: NextRequest) {
   const host = request.headers.get("host") ?? "";
@@ -16,6 +27,21 @@ export function proxy(request: NextRequest) {
   // (marketing) vive en "/" directamente, no hace falta rewrite.
   if (esDominioRaiz) {
     return NextResponse.next();
+  }
+
+  // admin.tukios.com (o admin.localhost en dev): herramienta interna para
+  // dar de alta tiendas a mano, sin login de Supabase Auth todavía -- se
+  // protege con HTTP Basic Auth en vez de dejarla abierta. Se resuelve
+  // antes que cualquier otro subdominio para no caer en el catch-all de
+  // "tienda" de más abajo.
+  const esAdmin = hostname === `admin.${ROOT_DOMAIN}` || hostname === "admin.localhost";
+  if (esAdmin) {
+    if (!verificarBasicAuth(request.headers.get("authorization"))) {
+      return respuestaNoAutorizada();
+    }
+    const url = request.nextUrl.clone();
+    url.pathname = `/admin${pathname === "/" ? "" : pathname}`;
+    return NextResponse.rewrite(url);
   }
 
   const esPanel = hostname.startsWith("panel.");

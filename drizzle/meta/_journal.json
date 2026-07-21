@@ -57,6 +57,13 @@
       "when": 1784653531571,
       "tag": "0007_fix_search_path_security_definer",
       "breakpoints": true
+    },
+    {
+      "idx": 8,
+      "version": "7",
+      "when": 1784656400205,
+      "tag": "0008_grants_service_role",
+      "breakpoints": true
     }
   ]
 }

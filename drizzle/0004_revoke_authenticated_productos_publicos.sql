@@ -1,0 +1,52 @@
+-- Custom SQL migration file, put your code below! --
+
+-- ============================================================================
+-- Fix descubierto al verificar 0003_vista_productos_publicos.sql: revocar
+-- privilegios que "authenticated" terminó teniendo sobre productos_publicos
+-- sin que ninguna migración se los haya otorgado a propósito.
+--
+-- Diagnóstico: 0003 crea la vista y le da GRANT SELECT solo a "anon" -- ese
+-- archivo no menciona a "authenticated" en ningún lado. Pero al aplicar la
+-- migración y volver a consultar information_schema.role_table_grants para
+-- verificar, "authenticated" apareció igual con SELECT, INSERT y UPDATE
+-- sobre productos_publicos. Causa: 0002_grants_authenticated.sql dejó esto
+-- corriendo, y sigue vigente hoy --
+--
+--   ALTER DEFAULT PRIVILEGES FOR ROLE postgres IN SCHEMA public
+--     GRANT SELECT, INSERT, UPDATE ON TABLES TO authenticated;
+--
+-- "ON TABLES" en ALTER DEFAULT PRIVILEGES no significa "solo tablas": aplica
+-- a cualquier objeto de tipo relación que el rol "postgres" cree de ahí en
+-- adelante en el schema "public" -- tablas comunes, y también vistas. La
+-- vista productos_publicos la crea 0003 con el rol "postgres" (el que corre
+-- las migraciones), así que calzó en esa regla y se llevó el mismo GRANT
+-- automático que cualquier tabla nueva. 0002 se escribió antes de que
+-- existiera esta vista y no tenía forma de prever el caso.
+--
+-- Por qué esto hay que revertirlo y no dejarlo así: como quedó documentado
+-- en 0003, productos_publicos es dueña de "postgres" (rolbypassrls = true),
+-- así que Postgres evalúa el acceso a la tabla base "productos" con los
+-- privilegios del DUEÑO de la vista, no de quien consulta -- y el dueño
+-- bypasea RLS por completo. Si "authenticated" puede consultar la vista,
+-- ve TODAS las filas de "productos" de TODAS las tiendas (sin costo ni
+-- porcentaje_ganancia, pero sí nombre/precio/foto/disponible/codigo_barras
+-- de tiendas ajenas), sin que la policy "productos_select_propia_tienda"
+-- (basada en mi_tienda_id()) se llegue a evaluar. Es exactamente el bypass
+-- de aislamiento por tienda que se pidió evitar. Además, como esta vista es
+-- automáticamente actualizable (proyección simple de una sola tabla, sin
+-- agregaciones ni WHERE), el INSERT/UPDATE otorgado no es inofensivo:
+-- Postgres lo traduce en un INSERT/UPDATE real sobre "productos" -- otro
+-- camino más para saltearse las policies de esa tabla.
+--
+-- No se toca la ALTER DEFAULT PRIVILEGES de 0002: sigue siendo lo correcto
+-- para tablas de datos reales del panel (donde SÍ queremos que
+-- "authenticated" tenga acceso automático). El problema es específico de
+-- esta vista puntual, así que se resuelve acá con un REVOKE dirigido, no
+-- cambiando la regla general. Nota para el futuro: cualquier vista nueva
+-- que cree una migración de acá en adelante va a heredar este mismo GRANT
+-- automático a "authenticated" -- si esa vista no debe ser visible para
+-- "authenticated" (u oculta columnas sensibles como esta), hay que acordarse
+-- de revocarlo explícitamente, como acá.
+-- ============================================================================
+
+REVOKE ALL PRIVILEGES ON TABLE productos_publicos FROM authenticated;

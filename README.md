@@ -1,36 +1,57 @@
-This is a [Next.js](https://nextjs.org) project bootstrapped with [`create-next-app`](https://nextjs.org/docs/app/api-reference/cli/create-next-app).
+# TuKios
 
-## Getting Started
+SaaS multi-tenant de gestión para kioscos, almacenes y minimarkets argentinos. Cada local tiene su catálogo público con checkout propio, y un panel de gestión de stock y ventas.
 
-First, run the development server:
+## Stack
 
-```bash
-npm run dev
-# or
-yarn dev
-# or
-pnpm dev
-# or
-bun dev
+- Next.js (App Router) + TypeScript
+- Tailwind CSS
+- Drizzle ORM + Postgres (Supabase)
+- Supabase Auth + Supabase Storage
+- Netlify (hosting)
+
+## Setup
+
+1. Cloná el repo e instalá las dependencias:
+
+   ```bash
+   git clone <url-del-repo>
+   cd TuKios
+   npm install
+   ```
+
+2. Copiá `.env.local.example` a `.env.local` y completá las variables. Salen del dashboard de tu proyecto en Supabase (Project Settings → API y → Database):
+
+   ```bash
+   cp .env.local.example .env.local
+   ```
+
+3. Corré las migraciones:
+
+   ```bash
+   npx drizzle-kit migrate
+   ```
+
+   Si la conexión se cuelga indefinidamente (sin tirar error), es un problema conocido de resolución IPv6 en algunas redes contra la conexión directa (puerto 5432) de Supabase. Solución: en el dashboard de Supabase, usá el connection string de **Session pooler** en vez de **Direct connection** para `DATABASE_URL`.
+
+4. Levantá el proyecto:
+
+   ```bash
+   npm run dev
+   ```
+
+## Estructura de carpetas
+
+```
+app/
+  (marketing)/   landing institucional del software (tukios.com)
+  (panel)/       panel de gestión de stock/ventas (panel.tukios.com)
+  (tienda)/      catálogo público + checkout de cada local (sulocal.tukios.com)
+db/              schema de Drizzle y cliente de conexión
+drizzle/         migraciones SQL generadas/aplicadas con drizzle-kit
+sql/             scripts de verificación manual (no son migraciones)
 ```
 
-Open [http://localhost:3000](http://localhost:3000) with your browser to see the result.
+## Más allá de esto
 
-You can start editing the page by modifying `app/page.tsx`. The page auto-updates as you edit the file.
-
-This project uses [`next/font`](https://nextjs.org/docs/app/building-your-application/optimizing/fonts) to automatically optimize and load [Geist](https://vercel.com/font), a new font family for Vercel.
-
-## Learn More
-
-To learn more about Next.js, take a look at the following resources:
-
-- [Next.js Documentation](https://nextjs.org/docs) - learn about Next.js features and API.
-- [Learn Next.js](https://nextjs.org/learn) - an interactive Next.js tutorial.
-
-You can check out [the Next.js GitHub repository](https://github.com/vercel/next.js) - your feedback and contributions are welcome!
-
-## Deploy on Vercel
-
-The easiest way to deploy your Next.js app is to use the [Vercel Platform](https://vercel.com/new?utm_medium=default-template&filter=next.js&utm_source=create-next-app&utm_campaign=create-next-app-readme) from the creators of Next.js.
-
-Check out our [Next.js deployment documentation](https://nextjs.org/docs/app/building-your-application/deploying) for more details.
+Para entender el porqué de las decisiones de arquitectura y de producto (no solo cómo levantar el proyecto), ver [`claude.md`](./claude.md).

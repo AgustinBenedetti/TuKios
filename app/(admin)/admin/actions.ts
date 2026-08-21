@@ -97,6 +97,9 @@ export async function crearTiendaYDueno(
       tienda_id: tienda.id,
       nombre: nombreDueno,
       rol: "dueño",
+      // La contraseña recién generada es temporal -- el panel obliga a
+      // cambiarla antes de dejar entrar (ver app/(panel)/panel/cambiar-password).
+      debe_cambiar_password: true,
     },
   });
 

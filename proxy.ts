@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
 import { verificarBasicAuth } from "@/lib/admin-auth";
+import { leerSesionPanel } from "@/lib/supabase/proxy";
 
 const ROOT_DOMAIN = "tukios.com";
 const SUBDOMINIO_HEADER = "x-tukios-subdominio";
@@ -14,7 +15,7 @@ function respuestaNoAutorizada() {
   });
 }
 
-export function proxy(request: NextRequest) {
+export async function proxy(request: NextRequest) {
   const host = request.headers.get("host") ?? "";
   const hostname = host.split(":")[0];
   const { pathname } = request.nextUrl;
@@ -48,8 +49,48 @@ export function proxy(request: NextRequest) {
   const url = request.nextUrl.clone();
 
   if (esPanel) {
+    // Chequeo optimista de sesión: lee y valida el JWT de la cookie (sin
+    // pegarle a la tabla `usuarios`, solo a Supabase Auth) para decidir
+    // redirects de forma centralizada antes de que se renderice cualquier
+    // página. No reemplaza el chequeo autoritativo que hace cada página
+    // protegida vía requerirSesionPanel() (ver lib/panel-auth.ts) -- ver el
+    // razonamiento completo ahí y en el comentario de más abajo.
+    const { sesion, cookiesActualizadas } = await leerSesionPanel(request);
+
+    const esLogin = pathname === "/login";
+    const esCambiarPassword = pathname === "/cambiar-password";
+
+    const conCookiesActualizadas = (response: NextResponse) => {
+      cookiesActualizadas.cookies.getAll().forEach((cookie) => {
+        response.cookies.set(cookie);
+      });
+      return response;
+    };
+
+    if (!sesion && !esLogin) {
+      return conCookiesActualizadas(
+        NextResponse.redirect(new URL("/login", request.url))
+      );
+    }
+    if (sesion && sesion.debeCambiarPassword && !esCambiarPassword) {
+      return conCookiesActualizadas(
+        NextResponse.redirect(new URL("/cambiar-password", request.url))
+      );
+    }
+    if (
+      sesion &&
+      !sesion.debeCambiarPassword &&
+      (esLogin || esCambiarPassword)
+    ) {
+      return conCookiesActualizadas(
+        NextResponse.redirect(new URL("/", request.url))
+      );
+    }
+
     url.pathname = `/panel${pathname === "/" ? "" : pathname}`;
-    return NextResponse.rewrite(url);
+    return conCookiesActualizadas(
+      NextResponse.rewrite(url, { request: { headers: request.headers } })
+    );
   }
 
   // Cualquier otro subdominio -> catálogo de tienda.
